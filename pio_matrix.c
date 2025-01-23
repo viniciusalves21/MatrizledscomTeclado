@@ -5,11 +5,13 @@
 #include "hardware/pio.h"
 #include "hardware/clocks.h"
 #include "pico/bootrom.h"
+
+// Arquivo com o programa PIO que controla os LEDs WS2812:
 #include "pio_matrix.pio.h"
 
-// --- Definições do Teclado ---
-static const uint ROW_PINS[4] = {8, 9, 6, 5};
-static const uint COL_PINS[4] = {4, 3, 2, 28};
+static const uint ROW_PINS[4] = {8, 9, 6, 5};   // Ajuste conforme seu hardware
+static const uint COL_PINS[4] = {4, 3, 2, 28};  // Ajuste conforme seu hardware
+
 static const char KEYPAD[4][4] = {
     {'1', '2', '3', 'A'},
     {'4', '5', '6', 'B'},
@@ -17,74 +19,51 @@ static const char KEYPAD[4][4] = {
     {'*', '0', '#', 'D'}
 };
 
-// --- Definições da Matriz de LEDs ---
-#define NUM_PIXELS 25
-#define OUT_PIN 7
 
-// --- Definições para as animações ---
-double animacao1_frames[5][NUM_PIXELS] = {
-    {0,0,0,0,0, 0,1,1,1,0, 0,1,1,1,0, 0,1,1,1,0, 0,0,0,0,0},
-    {0,0,0,0,0, 1,1,1,0,0, 1,1,1,0,0, 1,1,1,0,0, 0,0,0,0,0},
-    {0,0,0,0,0, 1,1,0,0,0, 1,1,0,0,0, 1,1,0,0,0, 0,0,0,0,0},
-    {0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0},
-    {0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0}
-};
+#define NUM_PIXELS 25    // 5x5
+#define OUT_PIN    7     // Pino de saída de dados para os LEDs WS2812
 
-double animacao2_frames[5][NUM_PIXELS] = {
-    {1,0,0,0,1, 0,1,0,1,0, 0,0,1,0,0, 0,1,0,1,0, 1,0,0,0,1},
-    {0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0},
-    {0,0,1,0,0, 0,0,1,0,0, 1,1,1,1,1, 0,0,1,0,0, 0,0,1,0,0},
-    {0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0},
-    {1,0,0,0,1, 0,1,0,1,0, 0,0,1,0,0, 0,1,0,1,0, 1,0,0,0,1}
-};
 
-double animacao3_frames[5][NUM_PIXELS] = {
-    {0,0,0,0,0, 0,1,1,1,0, 0,1,1,1,0, 0,1,1,1,0, 0,0,0,0,0},
-    {0,0,0,0,0, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 0,0,0,0,0},
-    {0,0,0,0,0, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 0,0,0,0,0},
-    {0,0,0,0,0, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 0,0,0,0,0},
-    {0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0}
-};
-
-// --- Funções da Matriz ---
-uint32_t matrix_rgb(double b, double r, double g) {
-    return (uint32_t)((uint8_t)(g * 255) << 16 | (uint8_t)(r * 255) << 8 | (uint8_t)(b * 255));
+uint32_t matrix_rgb(double r, double g, double b) {
+    // Converte cada componente para 0..255
+    unsigned char R = (unsigned char)(r * 255);
+    unsigned char G = (unsigned char)(g * 255);
+    unsigned char B_ = (unsigned char)(b * 255);
+    // Monta no formato GRB (24 bits) e descarta o byte menos significativo:
+    return ( (uint32_t)(G) << 24 )
+         | ( (uint32_t)(R) << 16 )
+         | ( (uint32_t)(B_) <<  8 );
 }
 
-void desenha_frame(double *frame, PIO pio, uint sm, double r, double g, double b) {
-    for (int16_t i = 0; i < NUM_PIXELS; i++) {
-        uint32_t valor_led = matrix_rgb(frame[i]*b, frame[i]*r, frame[i]*g);
-        pio_sm_put_blocking(pio, sm, valor_led);
-    }
-}
 
-// --- Funções do Teclado ---
 char read_keypad(void) {
     for (int col = 0; col < 4; col++) {
+        // Ativa coluna
         gpio_put(COL_PINS[col], 1);
+
         for (int row = 0; row < 4; row++) {
             if (gpio_get(ROW_PINS[row])) {
-                sleep_ms(10);
+                sleep_ms(10); // debounce simples
                 if (gpio_get(ROW_PINS[row])) {
+                    // Desativa coluna antes de retornar
                     gpio_put(COL_PINS[col], 0);
                     return KEYPAD[row][col];
                 }
             }
         }
+        // Desativa coluna antes de continuar
         gpio_put(COL_PINS[col], 0);
     }
     return 0;
 }
 
-void init_pins(void) {
-    stdio_init_all();
 
+void init_keypad_pins(void) {
     for (int i = 0; i < 4; i++) {
         gpio_init(ROW_PINS[i]);
         gpio_set_dir(ROW_PINS[i], GPIO_IN);
         gpio_pull_down(ROW_PINS[i]);
     }
-
     for (int i = 0; i < 4; i++) {
         gpio_init(COL_PINS[i]);
         gpio_set_dir(COL_PINS[i], GPIO_OUT);
@@ -92,79 +71,151 @@ void init_pins(void) {
     }
 }
 
-// --- Funções de Controle dos LEDs ---
-void desliga_leds(PIO pio, uint sm) {
-    double frame[NUM_PIXELS] = {0};
-    desenha_frame(frame, pio, sm, 0, 0, 0);
+
+void desenha_frame(const double *frame, PIO pio, uint sm, double r, double g, double b) {
+    for (int i = 0; i < NUM_PIXELS; i++) {
+        double intensidade = frame[i];
+        uint32_t cor = matrix_rgb(intensidade * r,
+                                  intensidade * g,
+                                  intensidade * b);
+        pio_sm_put_blocking(pio, sm, cor);
+    }
 }
 
+
+void desliga_leds(PIO pio, uint sm) {
+    static double frame[NUM_PIXELS] = {0};
+    desenha_frame(frame, pio, sm, 0.0, 0.0, 0.0);
+}
+
+
 void liga_leds_cor(PIO pio, uint sm, double r, double g, double b) {
-    double frame[NUM_PIXELS];
-    for(int i = 0; i < NUM_PIXELS; i++){
-        frame[i] = 1;
+    static double frame[NUM_PIXELS];
+    for (int i = 0; i < NUM_PIXELS; i++) {
+        frame[i] = 1.0; // acende todos
     }
     desenha_frame(frame, pio, sm, r, g, b);
 }
 
+static double animacao0_frames[5][NUM_PIXELS] = {
+    {0,0,0,0,0, 0,1,1,1,0, 0,1,1,1,0, 0,1,1,1,0, 0,0,0,0,0},
+    {0,0,0,0,0, 1,1,1,0,0, 1,1,1,0,0, 1,1,1,0,0, 0,0,0,0,0},
+    {0,0,0,0,0, 1,1,0,0,0, 1,1,0,0,0, 1,1,0,0,0, 0,0,0,0,0},
+    {0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0},
+    {0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0}
+};
+
+static double animacao1_frames[5][NUM_PIXELS] = {
+    {1,0,0,0,1, 0,1,0,1,0, 0,0,1,0,0, 0,1,0,1,0, 1,0,0,0,1},
+    {0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0},
+    {0,0,1,0,0, 0,0,1,0,0, 1,1,1,1,1, 0,0,1,0,0, 0,0,1,0,0},
+    {0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0},
+    {1,0,0,0,1, 0,1,0,1,0, 0,0,1,0,0, 0,1,0,1,0, 1,0,0,0,1}
+};
+
+static double animacao2_frames[5][NUM_PIXELS] = {
+    {1,1,1,1,1, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 1,1,1,1,1},
+    {0,0,0,0,0, 1,1,1,1,1, 0,1,0,1,0, 1,1,1,1,1, 0,0,0,0,0},
+    {1,0,1,0,1, 0,1,1,1,0, 1,0,1,0,1, 0,1,1,1,0, 1,0,1,0,1},
+    {0,0,0,0,0, 0,0,1,0,0, 1,1,1,1,1, 0,0,1,0,0, 0,0,0,0,0},
+    {1,1,1,1,1, 1,1,1,1,1, 0,0,1,0,0, 1,1,1,1,1, 1,1,1,1,1}
+};
+
+static double animacao3_frames[5][NUM_PIXELS] = {
+    {1,0,0,0,0, 0,0,1,0,0, 0,0,0,1,0, 0,0,0,0,1, 1,1,1,1,1},
+    {0,1,0,1,0, 1,0,1,0,1, 1,0,1,0,1, 0,1,0,1,0, 1,0,1,0,1},
+    {0,0,1,0,0, 1,1,1,1,1, 0,0,1,0,0, 1,1,1,1,1, 0,0,1,0,0},
+    {0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0},
+    {1,0,0,0,1, 0,1,0,1,0, 0,0,1,0,0, 0,1,0,1,0, 1,0,0,0,1}
+};
+
+
+void reproduz_animacao(double anim[5][NUM_PIXELS], PIO pio, uint sm,
+                       double r, double g, double b, int fps)
+{
+    int delay_ms = 1000 / fps; // conversão de fps para ms
+    for (int i = 0; i < 5; i++) {
+        desenha_frame(anim[i], pio, sm, r, g, b);
+        sleep_ms(delay_ms);
+    }
+}
+
+
 int main() {
+    stdio_init_all();
+    init_keypad_pins();
+
+    // Inicializa a PIO e o state machine
     PIO pio = pio0;
     uint sm = pio_claim_unused_sm(pio, true);
     uint offset = pio_add_program(pio, &pio_matrix_program);
     pio_matrix_program_init(pio, sm, offset, OUT_PIN);
 
-    stdio_init_all();
-    init_pins();
+    printf("Sistema iniciado. Aguardando teclas...\n");
 
     while (true) {
         char key = read_keypad();
-
         if (key != 0) {
             printf("Tecla pressionada: %c\n", key);
 
             switch (key) {
-                case '1': // Animação 1 (Vermelho)
-                    for (int i = 0; i < 5; i++) {
-                        desenha_frame(animacao1_frames[i], pio, sm, 1.0, 0.0, 0.0);
-                        sleep_ms(100);
-                    }
+                case '0':
+                    reproduz_animacao(animacao0_frames, pio, sm,
+                                      0.0, 0.0, 1.0, 10); // Azul, 10 fps
                     break;
-                case '2': // Animação 2 (Verde)
-                    for (int i = 0; i < 5; i++) {
-                        desenha_frame(animacao2_frames[i], pio, sm, 0.0, 1.0, 0.0);
-                        sleep_ms(100);
-                    }
+
+                case '1':
+                    reproduz_animacao(animacao1_frames, pio, sm,
+                                      1.0, 0.0, 0.0, 10); // Vermelho, 10 fps
                     break;
-                case '3': // Animação 3 (Azul)
-                    for (int i = 0; i < 5; i++) {
-                        desenha_frame(animacao3_frames[i], pio, sm, 0.0, 0.0, 1.0);
-                        sleep_ms(100);
-                    }
+
+                case '2':
+                    reproduz_animacao(animacao2_frames, pio, sm,
+                                      0.0, 1.0, 0.0, 8);  // cor verde, 8 fps
                     break;
-                case 'A': // Desliga todos os LEDs
+                case '3':
+                    reproduz_animacao(animacao3_frames, pio, sm,
+                                      0.3, 0.5, 1.0, 7);
+                    break;
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                    desliga_leds(pio, sm);
+                    printf("Animação %c não definida: Desligando LEDs.\n", key);
+                    break;
+
+                // Tecla A => Desliga
+                case 'A':
                     desliga_leds(pio, sm);
                     break;
-                case 'B': // Liga todos os LEDs em Azul (100%)
+                // Tecla B => Liga tudo em azul (100%)
+                case 'B':
                     liga_leds_cor(pio, sm, 0.0, 0.0, 1.0);
                     break;
-                case 'C': // Liga todos os LEDs em Vermelho (80%)
+                // Tecla C => Liga tudo em vermelho (80%)
+                case 'C':
                     liga_leds_cor(pio, sm, 0.8, 0.0, 0.0);
                     break;
-                case 'D': // Liga todos os LEDs em Verde (50%)
+                // Tecla D => Liga tudo em verde (50%)
+                case 'D':
                     liga_leds_cor(pio, sm, 0.0, 0.5, 0.0);
                     break;
-                case '#': // Liga todos os LEDs em Branco (20%)
+                // Tecla # => Liga tudo em branco (20%)
+                case '#':
                     liga_leds_cor(pio, sm, 0.2, 0.2, 0.2);
                     break;
                 default:
                     break;
             }
 
-            // Espera a tecla ser solta para evitar repetições
             while (read_keypad() != 0) {
                 tight_loop_contents();
             }
         }
-        sleep_ms(50); // Pequena pausa
+        sleep_ms(50);
     }
     return 0;
 }
