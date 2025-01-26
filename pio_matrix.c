@@ -96,7 +96,6 @@ void liga_leds_cor(PIO pio, uint sm, double r, double g, double b) {
     }
     desenha_frame(frame, pio, sm, r, g, b);
 }
-
 static double animacao0_frames[5][NUM_PIXELS] = {
     {0,0,0,0,0, 0,1,1,1,0, 0,1,1,1,0, 0,1,1,1,0, 0,0,0,0,0},
     {0,0,0,0,0, 1,1,1,0,0, 1,1,1,0,0, 1,1,1,0,0, 0,0,0,0,0},
@@ -128,7 +127,27 @@ static double animacao3_frames[5][NUM_PIXELS] = {
     {0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0, 1,0,1,0,1, 0,1,0,1,0},
     {1,0,0,0,1, 0,1,0,1,0, 0,0,1,0,0, 0,1,0,1,0, 1,0,0,0,1}
 };
-
+static double animacao4_frames[5][NUM_PIXELS] = {
+    {0,0,1,0,0, 0,0,0,0,0, 0,0,1,1,0, 0,1,0,0,0, 0,1,1,1,0},
+    {1,1,1,1,1, 1,0,0,0,1, 1,0,1,0,1, 1,0,0,0,1, 1,1,1,1,1},
+    {0,0,0,0,0, 0,1,1,1,0, 0,1,0,1,0, 0,1,1,1,0, 0,0,0,0,0},
+    {0,0,0,0,0, 0,0,1,0,0, 0,1,1,1,0, 0,0,1,0,0, 0,0,0,0,0},
+    {1,0,0,0,1, 0,1,0,1,0, 0,0,1,0,0, 0,1,0,1,0, 1,0,0,0,1}
+};
+static double animacao5_frames[5][NUM_PIXELS] = {
+    {0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 1,1,1,1,1},
+    {0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 1,1,1,1,1, 1,1,1,1,1},
+    {0,0,0,0,0, 0,0,0,0,0, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1},
+    {0,0,0,0,0, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1},
+    {1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1, 1,1,1,1,1}
+};
+static double animacao6_frames[5][NUM_PIXELS] = {
+    {1,0,0,0,0, 1,0,0,0,0, 1,0,0,0,0, 1,0,0,0,0, 1,0,0,0,0},
+    {0,1,0,0,0, 0,1,0,0,0, 0,1,0,0,0, 0,1,0,0,0, 0,1,0,0,0},
+    {0,0,1,0,0, 0,0,1,0,0, 0,0,1,0,0, 0,0,1,0,0, 0,0,1,0,0},
+    {0,0,0,1,0, 0,0,0,1,0, 0,0,0,1,0, 0,0,0,1,0, 0,0,0,1,0},
+    {0,0,0,0,1, 0,0,0,0,1, 0,0,0,0,1, 0,0,0,0,1, 0,0,0,0,1}
+};
 
 void reproduz_animacao(double anim[5][NUM_PIXELS], PIO pio, uint sm,
                        double r, double g, double b, int fps)
@@ -168,18 +187,26 @@ int main() {
                     reproduz_animacao(animacao1_frames, pio, sm,
                                       1.0, 0.0, 0.0, 10); // Vermelho, 10 fps
                     break;
-
                 case '2':
                     reproduz_animacao(animacao2_frames, pio, sm,
                                       0.0, 1.0, 0.0, 8);  // cor verde, 8 fps
                     break;
                 case '3':
                     reproduz_animacao(animacao3_frames, pio, sm,
-                                      0.3, 0.5, 1.0, 7);
+                                      0.3, 0.5, 1.0, 8); // Azul, 8 Fps
                     break;
                 case '4':
+                    reproduz_animacao(animacao4_frames, pio, sm,
+                                      0.5, 0.5, 0.0, 8); // Amarelo,  8 Fps
+                    break;
                 case '5':
+                    reproduz_animacao(animacao5_frames, pio, sm,
+                                      0.9, 0.6, 0.0, 9); // Laranja, 9 Fps
+                    break;
                 case '6':
+                    reproduz_animacao(animacao6_frames, pio, sm,
+                                      0.5, 0.0, 0.5, 10); // Rosa, 10 Fps
+                    break;
                 case '7':
                 case '8':
                 case '9':
