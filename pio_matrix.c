@@ -5,6 +5,7 @@
 #include "hardware/pio.h"
 #include "hardware/clocks.h"
 #include "pico/bootrom.h"
+#include "hardware/pwm.h"
 
 // Arquivo com o programa PIO que controla os LEDs WS2812:
 #include "pio_matrix.pio.h"
@@ -22,6 +23,7 @@ static const char KEYPAD[4][4] = {
 
 #define NUM_PIXELS 25    // 5x5
 #define OUT_PIN    7     // Pino de saída de dados para os LEDs WS2812
+#define BUZZER_PIN 21    // Porta associada ao Buzzer
 
 
 uint32_t matrix_rgb(double r, double g, double b) {
@@ -158,8 +160,75 @@ void reproduz_animacao(double anim[5][NUM_PIXELS], PIO pio, uint sm,
         sleep_ms(delay_ms);
     }
 }
+//Define as notas
+// Frequências das notas em Hz
+#define DO 132
+#define DO_S 139
+#define RE 148
+#define RE_S 156
+#define MI 166
+#define FA 176
+#define FA_S 186
+#define SOL 197
+#define SOL_S 209
+#define LA 222
+#define LA_S 235
+#define SI 249
+#define DO_ 264
 
+// Tempo base e intervalo
+#define TEMPO 350 // Duração de cada nota
+#define INTERVALO 100 // Pausa entre notas
 
+//Inicia o Buzzer
+void buzz(uint freq, uint tempo) {
+    uint slice_num = pwm_gpio_to_slice_num(BUZZER_PIN);
+    uint channel = pwm_gpio_to_channel(BUZZER_PIN);
+
+    // Configurando a frequência
+    uint32_t clock_freq = 125000000;
+    uint32_t divider = clock_freq / freq / 65536 + 1;
+    uint32_t top = clock_freq / (divider * freq);
+
+    // Configurando as repetições
+    pwm_set_clkdiv(slice_num, divider);
+    pwm_set_wrap(slice_num, top - 1);
+    pwm_set_chan_level(slice_num, channel, top / 2);
+    pwm_set_enabled(slice_num, true);
+
+    sleep_ms(tempo);
+
+    pwm_set_enabled(slice_num, false);
+}
+//Toca as notas
+int Tocar() {
+    gpio_set_function(BUZZER_PIN, GPIO_FUNC_PWM);
+
+    // Sequência de notas
+    buzz(FA_S, TEMPO); sleep_ms(INTERVALO); // Fá#
+    buzz(RE, TEMPO); sleep_ms(INTERVALO); // Ré
+    buzz(RE, TEMPO); sleep_ms(INTERVALO); // Ré
+    buzz(MI, TEMPO); sleep_ms(INTERVALO); // Mi
+    buzz(FA, TEMPO); sleep_ms(INTERVALO); // Fá
+    buzz(MI, TEMPO); sleep_ms(INTERVALO); // Mi
+    buzz(RE, TEMPO); sleep_ms(INTERVALO); // Ré
+    buzz(DO_S, TEMPO); sleep_ms(INTERVALO); // Dó#
+    buzz(RE, TEMPO); sleep_ms(INTERVALO); // Ré
+    buzz(MI, TEMPO); sleep_ms(INTERVALO); // Mi
+    buzz(FA_S, TEMPO); sleep_ms(INTERVALO); // Fá#
+    buzz(SI, TEMPO); sleep_ms(INTERVALO); // Si
+    buzz(SI, TEMPO); sleep_ms(INTERVALO); // Si
+    buzz(DO_S, TEMPO); sleep_ms(INTERVALO); // Dó#
+    buzz(RE, TEMPO); sleep_ms(INTERVALO); // Ré
+    buzz(MI, TEMPO); sleep_ms(INTERVALO); // Mi
+    buzz(RE, TEMPO); sleep_ms(INTERVALO); // Ré
+    buzz(DO_S, TEMPO); sleep_ms(INTERVALO); // Dó#
+    buzz(LA, TEMPO); sleep_ms(INTERVALO); // Lá
+    buzz(SOL, TEMPO); sleep_ms(INTERVALO); // Sol
+    buzz(FA_S, TEMPO); sleep_ms(INTERVALO); // Fá#
+
+    return 0;
+}
 int main() {
     stdio_init_all();
     init_keypad_pins();
@@ -206,6 +275,13 @@ int main() {
                 case '6':
                     reproduz_animacao(animacao6_frames, pio, sm,
                                       0.5, 0.0, 0.5, 10); // Rosa, 10 Fps
+
+                    Tocar();
+
+                    reproduz_animacao(animacao6_frames, pio, sm,
+                                      0.5, 0.0, 0.5, 10); // Rosa, 10 Fps
+
+                                      
                     break;
                 case '7':
                 case '8':

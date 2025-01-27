@@ -67,6 +67,7 @@ target_link_libraries(pio_matrix PRIVATE
         pico_stdlib
         hardware_pio
 	    hardware_adc
+        hardware_pwm
         pico_bootrom
         )
 
