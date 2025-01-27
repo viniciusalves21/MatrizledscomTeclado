@@ -21,8 +21,8 @@ Este projeto demonstra como controlar uma matriz de LEDs WS2812 (5x5) usando um 
 
 Após o upload do código, o sistema aguardará a entrada do teclado. As seguintes teclas executam as seguintes ações:
 
-*   **0-6:** Reproduzem animações pré-definidas com diferentes cores e velocidades.
-*   **7-9:** Desligam os LEDs e exibem uma mensagem informando que a animação não está definida.
+*   **0-7:** Reproduzem animações pré-definidas com diferentes cores e velocidades.
+*   **8-9:** Desligam os LEDs e exibem uma mensagem informando que a animação não está definida.
 *   **A:** Desliga todos os LEDs.
 *   **B:** Liga todos os LEDs em azul (100% de intensidade).
 *   **C:** Liga todos os LEDs em vermelho (80% de intensidade).
