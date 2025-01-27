@@ -5,6 +5,7 @@
 #include "hardware/pio.h"
 #include "hardware/clocks.h"
 #include "pico/bootrom.h"
+#include "hardware/pwm.h"
 
 // Arquivo com o programa PIO que controla os LEDs WS2812:
 #include "pio_matrix.pio.h"
@@ -12,6 +13,7 @@
 #define NUM_PIXELS 25   // 5x5
 #define NUM_FRAMES 5    // mínimo de 5 frames
 #define OUT_PIN    7    // Pino de saída de dados para os LEDs WS2812
+#define BUZZER_PIN 21    // Porta associada ao Buzzer
 
 static const char KEYPAD[4][4] = {
     {'1', '2', '3', 'A'},
@@ -23,6 +25,76 @@ static const uint ROW_PINS[4] = {8, 9, 6, 5};   // Ajuste conforme seu hardware
 static const uint COL_PINS[4] = {4, 3, 2, 28};  // Ajuste conforme seu hardware
 static const uint32_t COR[5] = {0x00000000, 0x0000FF00, 0x00CC0000, 0x80000000, 0x33333300};
 static const uint8_t FPS[10] = {10, 10, 8, 8, 8, 9, 10, 10, 10, 10};
+
+//Define as notas
+// Frequências das notas em Hz
+#define DO 132
+#define DO_S 139
+#define RE 148
+#define RE_S 156
+#define MI 166
+#define FA 176
+#define FA_S 186
+#define SOL 197
+#define SOL_S 209
+#define LA 222
+#define LA_S 235
+#define SI 249
+#define DO_ 264
+
+// Tempo base e intervalo
+#define TEMPO 300 // Duração de cada nota
+#define INTERVALO 100 // Pausa entre notas
+
+//Inicia o Buzzer
+void buzz(uint freq, uint tempo) {
+    uint slice_num = pwm_gpio_to_slice_num(BUZZER_PIN);
+    uint channel = pwm_gpio_to_channel(BUZZER_PIN);
+
+    // Configurando a frequência
+    uint32_t clock_freq = 125000000;
+    uint32_t divider = clock_freq / freq / 65536 + 1;
+    uint32_t top = clock_freq / (divider * freq);
+
+    // Configurando as repetições
+    pwm_set_clkdiv(slice_num, divider);
+    pwm_set_wrap(slice_num, top - 1);
+    pwm_set_chan_level(slice_num, channel, top / 2);
+    pwm_set_enabled(slice_num, true);
+
+    sleep_ms(tempo);
+
+    pwm_set_enabled(slice_num, false);
+}
+//Toca as notas
+int Tocar() {
+    gpio_set_function(BUZZER_PIN, GPIO_FUNC_PWM);
+
+    // Sequência de notas
+    buzz(FA_S, TEMPO); sleep_ms(INTERVALO); // Fá#
+    buzz(RE, TEMPO); sleep_ms(INTERVALO*2); // Ré
+    buzz(RE, TEMPO); sleep_ms(INTERVALO*0.25); // Ré
+    buzz(MI, TEMPO); sleep_ms(INTERVALO*0.25); // Mi
+    buzz(FA, TEMPO); sleep_ms(INTERVALO*0.75); // Fá
+    buzz(MI, TEMPO); sleep_ms(INTERVALO*0.75); // Mi
+    buzz(RE, TEMPO); sleep_ms(INTERVALO*0.5); // Ré
+    buzz(DO_S, TEMPO); sleep_ms(INTERVALO*0.75); // Dó#
+    buzz(RE, TEMPO); sleep_ms(INTERVALO*0.75); // Ré
+    buzz(MI, TEMPO); sleep_ms(INTERVALO*0.5); // Mi
+    buzz(FA_S, TEMPO); sleep_ms(INTERVALO); // Fá#
+    buzz(SI, TEMPO); sleep_ms(INTERVALO*1.5); // Si
+    buzz(SI, TEMPO); sleep_ms(INTERVALO*0.5); // Si
+    buzz(DO_S, TEMPO); sleep_ms(INTERVALO*0.5); // Dó#
+    buzz(RE, TEMPO); sleep_ms(INTERVALO*0.75); // Ré
+    buzz(MI, TEMPO); sleep_ms(INTERVALO*0.75); // Mi
+    buzz(RE, TEMPO); sleep_ms(INTERVALO*0.5); // Ré
+    buzz(DO_S, TEMPO); sleep_ms(INTERVALO*0.75); // Dó#
+    buzz(LA, TEMPO); sleep_ms(INTERVALO*0.75); // Lá
+    buzz(SOL, TEMPO); sleep_ms(INTERVALO*0.5); // Sol
+    buzz(FA_S, TEMPO); sleep_ms(INTERVALO); // Fá#
+
+    return 0;
+}
 
 static uint32_t animacao[10][NUM_FRAMES][NUM_PIXELS] = {
     //Animação 0 -------------------------------------------------OK
@@ -212,7 +284,8 @@ static uint32_t animacao[10][NUM_FRAMES][NUM_PIXELS] = {
       0x99E60000, 0x99E60000, 0x99E60000, 0x99E60000, 0x99E60000}
     },
     //Animação 6 -------------------------------------------------OK
-    {{0x00808000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+    {
+     {0x00808000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
       0x00808000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
       0x00808000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
       0x00808000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -274,35 +347,36 @@ static uint32_t animacao[10][NUM_FRAMES][NUM_PIXELS] = {
       0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000}
     },
     //Animação 8 -------------------------------------------------
-    {{0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
+    {
+     {0x00804000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+      0x00808000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+      0x00808000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+      0x00808000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+      0x00808000, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
 
-     {0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
+     {0x00000000, 0x00804000, 0x00000000, 0x00000000, 0x00000000,
+      0x00000000, 0x00404000, 0x00000000, 0x00000000, 0x00000000,
+      0x00000000, 0x00404000, 0x00000000, 0x00000000, 0x00000000,
+      0x00000000, 0x00404000, 0x00000000, 0x00000000, 0x00000000,
+      0x00000000, 0x00404000, 0x00000000, 0x00000000, 0x00000000},
 
-     {0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
+     {0x00000000, 0x00000000, 0x00404000, 0x00000000, 0x00000000,
+      0x00000000, 0x00000000, 0x00404000, 0x00000000, 0x00000000,
+      0x00000000, 0x00000000, 0x00404000, 0x00000000, 0x00000000,
+      0x00000000, 0x00000000, 0x00404000, 0x00000000, 0x00000000,
+      0x00000000, 0x00000000, 0x00404000, 0x00000000, 0x00000000},
 
-     {0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000},
+     {0x00000000, 0x00000000, 0x00000000, 0x00404000, 0x00000000,
+      0x00000000, 0x00000000, 0x00000000, 0x00404000, 0x00000000,
+      0x00000000, 0x00000000, 0x00000000, 0x00404000, 0x00000000,
+      0x00000000, 0x00000000, 0x00000000, 0x00404000, 0x00000000,
+      0x00000000, 0x00000000, 0x00000000, 0x00404000, 0x00000000},
 
-     {0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
-      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000}
+     {0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00804000,
+      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00804000,
+      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00804000,
+      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00804000,
+      0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00804000}
     },
     //Animação 9 -------------------------------------------------
     {{0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
@@ -337,11 +411,11 @@ static uint32_t animacao[10][NUM_FRAMES][NUM_PIXELS] = {
     },
 };
 
+
 void init_keypad_pins();
 char readKeypad();
 void ligaLedsCor(PIO pio, uint sm, uint32_t cor);
 void reproduzAnimacao(PIO pio, uint sm, uint32_t *anima, uint8_t fps);
-
 int main() {
     stdio_init_all();
     init_keypad_pins();
@@ -360,9 +434,14 @@ int main() {
         if (key != 0) {
             printf("Tecla pressionada: %c\n", key);
 
-            if(key >= '0' && key <= '7')
+            if(key >= '0' && key <= '7'){
                 reproduzAnimacao(pio, sm, animacao[key - 48][0], FPS[key - 48]);
-            else if(key >= '8' && key <= '9') {
+            }else if(key == '8'){
+                reproduzAnimacao(pio, sm, animacao[key - 48][0], FPS[key - 48]);
+                Tocar();
+                reproduzAnimacao(pio, sm, animacao[key - 48][0], FPS[key - 48]);
+            }
+            else if(key =='9') {
                 ligaLedsCor(pio, sm, 0);
                 printf("Animação %c não definida: Desligando LEDs.\n", key);
             }
