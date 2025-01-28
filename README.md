@@ -39,6 +39,9 @@ O código principal contém a lógica de leitura do teclado, controle dos LEDs e
 *   As animações são armazenadas em arrays bidimensionais (`animacao0_frames`, `animacao1_frames`, etc.). Cada linha do array representa um frame da animação.
 *   A função `matrix_rgb` converte valores RGB normalizados (0.0 - 1.0) para o formato GRB de 24 bits exigido pelos LEDs WS2812.
 
+## Link do vídeo
+https://drive.google.com/file/d/1-t0bwWktBsADjjFLrY5kJar-iDTiAion/view?usp=sharing
+
 ## Contribuições
 
 Contribuições são bem-vindas! Sinta-se à vontade para abrir issues ou pull requests.
